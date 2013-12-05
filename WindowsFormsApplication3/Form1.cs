@@ -109,6 +109,18 @@ namespace WindowsFormsApplication3
                     key = "forward";
                     this.Refresh();
                     break;
+                case Keys.S:
+                    key = "back";
+                    this.Refresh();
+                    break;
+                case Keys.Up:
+                    key = "arm";
+                    this.Refresh();
+                    break;
+                case Keys.Down:
+                    key = "disarm";
+                    this.Refresh();
+                    break;
                 default:
                     break;
             }
@@ -132,6 +144,7 @@ namespace WindowsFormsApplication3
         {
             //create an Serial Port object
             SerialPort serialPort = new SerialPort();
+            serialPort.PortName = "COM4";//"COM5";
             serialPort.BaudRate = 9600;
             serialPort.DataBits = 8;
             serialPort.Parity = Parity.None;
@@ -139,34 +152,88 @@ namespace WindowsFormsApplication3
             //open serial port
             serialPort.Open();
 
+            short roll = 1500;
+            short pitch = 1500;
+            short yaw = 1500;
+            short throttle = 1500;
+            short aux1 = 1000;
+            short aux2 = 1000;
+            short aux3 = 1000;
+            short aux4 = 1000;
+                
             while (true)
             {
+                throttle = 1500;
+                yaw = 1500;
+                pitch = 1500;
+                roll = 1500;
+                aux1 = 1000;
+                aux2 = 1000;
+                aux3 = 1000;
+                aux4 = 1000;
                 Console.WriteLine(key);
-                short roll = ((short) 0).LimitToRange(1000,2000);
-                short pitch = ((short)0).LimitToRange(1000, 2000);
-                short yaw = ((short)0).LimitToRange(1000, 2000);
-                short throttle = ((short)2000).LimitToRange(1000, 2000);
-                MemoryStream stream = new MemoryStream();
-                using (BinaryWriter writer = new BinaryWriter(stream))
+                switch (key)
                 {
-                    writer.Write(roll);
-                    writer.Write(pitch);
-                    writer.Write(yaw);
-                    writer.Write(throttle);
-                    writer.Write((short)0);
-                    writer.Write((short)0);
-                    writer.Write((short)0);
-                    writer.Write((short)0);
+                    case "forward":
+                        throttle = 2000;
+                        pitch = 1000;
+                        break;
+                    case "left":
+                        yaw = 1000;
+                        throttle = 2000;
+                        break;
+                    case "right":
+                        yaw = 2000;
+                        throttle = 2000;
+                        break;
+                    case "back":
+                        throttle = 2000;
+                        pitch = 2000;
+                        break;
+                    case "arm":
+                        throttle = 1000;
+                        yaw = 2000;
+                        aux1 = 2000;
+                        aux2 = 2000;
+                        aux3 = 2000;
+                        aux4 = 2000;
+                        break;
+                    case "disarm":
+                        throttle = 1000;
+                        yaw = 1000;
+                        break;
+                    default:
+                        break;
                 }
-                sendRequestMSP(serialPort, generateRequestMSP(MSP_SET_RAW_RC, stream.ToArray()));
-                System.Threading.Thread.Sleep(1000);
+                roll = roll.LimitToRange(1000, 2000);
+                pitch = pitch.LimitToRange(1000, 2000);
+                yaw = yaw.LimitToRange(1000, 2000);
+                throttle = throttle.LimitToRange(1000, 2000);
+                sendMessage(serialPort, throttle, yaw, pitch, roll, aux1, aux2, aux3, aux4);
+                System.Threading.Thread.Sleep(100);
             }
+        }
+
+        private void sendMessage(SerialPort serialPort, short throttle, short yaw, short pitch, short roll, short aux1, short aux2, short aux3, short aux4)
+        {
+            MemoryStream stream = new MemoryStream();
+            using (BinaryWriter writer = new BinaryWriter(stream))
+            {
+                writer.Write(roll);
+                writer.Write(pitch);
+                writer.Write(yaw);
+                writer.Write(throttle);
+                writer.Write(aux1);
+                writer.Write(aux2);
+                writer.Write(aux3);
+                writer.Write(aux4);
+            }
+            sendRequestMSP(serialPort, generateRequestMSP(MSP_SET_RAW_RC, stream.ToArray()));
         }
 
         private void sendRequestMSP(SerialPort serialPort, List<Byte> bytes)
         {
             serialPort.Write(bytes.ToArray(), 0, bytes.Count);
-            Console.WriteLine(bytes.ToString());
         }
 
         private List<Byte> generateRequestMSP(int msp, byte[] bytes)
